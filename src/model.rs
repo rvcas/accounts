@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "lowercase")]
 pub enum Action {
     Deposit,
-    Withdraw,
+    Withdrawal,
 }
 
 #[derive(Deserialize, Clone, Copy)]

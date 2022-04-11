@@ -8,12 +8,12 @@ use accounts::{
 fn main() -> anyhow::Result<()> {
     let args = Cli::default();
 
-    let raw_entries = std::fs::read(&args.input)?;
-
     let mut transactions = HashMap::new();
     let mut accounts = HashMap::new();
 
-    let mut rdr = csv::Reader::from_reader(raw_entries.as_slice());
+    let mut rdr = csv::ReaderBuilder::new()
+        .trim(csv::Trim::All)
+        .from_path(args.input)?;
 
     for result in rdr.deserialize() {
         let entry: Transaction = result?;
@@ -29,7 +29,7 @@ fn main() -> anyhow::Result<()> {
                 account.available += entry.amount;
                 account.total += entry.amount;
             }
-            Action::Withdraw => {
+            Action::Withdrawal => {
                 account.available -= entry.amount;
                 account.total -= entry.amount;
             }
