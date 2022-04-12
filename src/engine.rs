@@ -30,7 +30,11 @@ impl Engine {
         match entry.action {
             Action::Deposit => {
                 if let Some(amount) = entry.amount {
-                    account.deposit(amount);
+                    if !account.locked {
+                        account.deposit(amount);
+                    } else {
+                        entry.failed = true;
+                    }
 
                     self.transactions.insert(entry.id, entry);
                 } else {
@@ -39,7 +43,7 @@ impl Engine {
             }
             Action::Withdrawal => {
                 if let Some(amount) = entry.amount {
-                    if amount <= account.available {
+                    if amount <= account.available && !account.locked {
                         account.withdraw(amount);
                     } else {
                         entry.failed = true;
@@ -52,7 +56,7 @@ impl Engine {
             }
             Action::Dispute => {
                 if let Some(transaction) = self.transactions.get_mut(&entry.id) {
-                    if transaction.client_id == account.id {
+                    if transaction.client_id == account.id && !transaction.failed {
                         transaction.is_under_dispute = true;
 
                         if let Some(amount) = transaction.amount_with_sign() {
@@ -67,7 +71,10 @@ impl Engine {
             }
             Action::Resolve => {
                 if let Some(transaction) = self.transactions.get_mut(&entry.id) {
-                    if transaction.is_under_dispute && transaction.client_id == account.id {
+                    if transaction.is_under_dispute
+                        && transaction.client_id == account.id
+                        && !transaction.failed
+                    {
                         transaction.is_under_dispute = false;
 
                         if let Some(amount) = transaction.amount_with_sign() {
@@ -82,7 +89,10 @@ impl Engine {
             }
             Action::Chargeback => {
                 if let Some(transaction) = self.transactions.get_mut(&entry.id) {
-                    if transaction.is_under_dispute && transaction.client_id == account.id {
+                    if transaction.is_under_dispute
+                        && transaction.client_id == account.id
+                        && !transaction.failed
+                    {
                         transaction.is_under_dispute = false;
 
                         if let Some(amount) = transaction.amount_with_sign() {
