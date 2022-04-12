@@ -100,3 +100,232 @@ impl Engine {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn deposit() {
+        let mut engine = Engine::new();
+        let entry = Transaction {
+            action: Action::Deposit,
+            client_id: 1,
+            id: 1,
+            amount: Some(10.0),
+            is_under_dispute: false,
+            failed: false,
+        };
+
+        engine.process(entry).unwrap();
+
+        let account = engine.accounts.get(&1).unwrap();
+
+        assert_eq!(account.available, 10.0);
+        assert_eq!(account.total, 10.0);
+        assert_eq!(account.held, 0.0);
+        assert!(!account.locked);
+    }
+
+    #[test]
+    fn withdraw() {
+        let mut engine = Engine::new();
+        let entries = vec![
+            Transaction {
+                action: Action::Deposit,
+                client_id: 1,
+                id: 1,
+                amount: Some(10.0),
+                is_under_dispute: false,
+                failed: false,
+            },
+            Transaction {
+                action: Action::Withdrawal,
+                client_id: 1,
+                id: 2,
+                amount: Some(5.0),
+                is_under_dispute: false,
+                failed: false,
+            },
+        ];
+
+        for entry in entries {
+            engine.process(entry).unwrap();
+        }
+
+        let account = engine.accounts.get(&1).unwrap();
+
+        assert_eq!(account.available, 5.0);
+        assert_eq!(account.total, 5.0);
+        assert_eq!(account.held, 0.0);
+        assert!(!account.locked);
+    }
+
+    #[test]
+    fn dispute() {
+        let mut engine = Engine::new();
+        let entries = vec![
+            Transaction {
+                action: Action::Deposit,
+                client_id: 1,
+                id: 1,
+                amount: Some(10.0),
+                is_under_dispute: false,
+                failed: false,
+            },
+            Transaction {
+                action: Action::Dispute,
+                client_id: 1,
+                id: 1,
+                amount: None,
+                is_under_dispute: false,
+                failed: false,
+            },
+        ];
+
+        for entry in entries {
+            engine.process(entry).unwrap();
+        }
+
+        let account = engine.accounts.get(&1).unwrap();
+
+        assert_eq!(account.available, 0.0);
+        assert_eq!(account.held, 10.0);
+        assert_eq!(account.total, 10.0);
+        assert!(!account.locked);
+
+        let transaction = engine.transactions.get(&1).unwrap();
+
+        assert!(transaction.is_under_dispute);
+    }
+
+    #[test]
+    fn resolve() {
+        let mut engine = Engine::new();
+        let entries = vec![
+            Transaction {
+                action: Action::Deposit,
+                client_id: 1,
+                id: 1,
+                amount: Some(10.0),
+                is_under_dispute: false,
+                failed: false,
+            },
+            Transaction {
+                action: Action::Dispute,
+                client_id: 1,
+                id: 1,
+                amount: None,
+                is_under_dispute: false,
+                failed: false,
+            },
+            Transaction {
+                action: Action::Resolve,
+                client_id: 1,
+                id: 1,
+                amount: None,
+                is_under_dispute: false,
+                failed: false,
+            },
+        ];
+
+        for entry in entries {
+            engine.process(entry).unwrap();
+        }
+
+        let account = engine.accounts.get(&1).unwrap();
+
+        assert_eq!(account.available, 10.0);
+        assert_eq!(account.total, 10.0);
+        assert_eq!(account.held, 0.0);
+        assert!(!account.locked);
+
+        let transaction = engine.transactions.get(&1).unwrap();
+
+        assert!(!transaction.is_under_dispute);
+    }
+
+    #[test]
+    fn chargeback() {
+        let mut engine = Engine::new();
+        let entries = vec![
+            Transaction {
+                action: Action::Deposit,
+                client_id: 1,
+                id: 1,
+                amount: Some(10.0),
+                is_under_dispute: false,
+                failed: false,
+            },
+            Transaction {
+                action: Action::Dispute,
+                client_id: 1,
+                id: 1,
+                amount: None,
+                is_under_dispute: false,
+                failed: false,
+            },
+            Transaction {
+                action: Action::Chargeback,
+                client_id: 1,
+                id: 1,
+                amount: None,
+                is_under_dispute: false,
+                failed: false,
+            },
+        ];
+
+        for entry in entries {
+            engine.process(entry).unwrap();
+        }
+
+        let account = engine.accounts.get(&1).unwrap();
+
+        assert_eq!(account.available, 0.0);
+        assert_eq!(account.held, 0.0);
+        assert_eq!(account.total, 0.0);
+        assert!(account.locked);
+
+        let transaction = engine.transactions.get(&1).unwrap();
+
+        assert!(!transaction.is_under_dispute);
+    }
+
+    #[test]
+    fn withdraw_more_than_available() {
+        let mut engine = Engine::new();
+        let entries = vec![
+            Transaction {
+                action: Action::Deposit,
+                client_id: 1,
+                id: 1,
+                amount: Some(10.0),
+                is_under_dispute: false,
+                failed: false,
+            },
+            Transaction {
+                action: Action::Withdrawal,
+                client_id: 1,
+                id: 2,
+                amount: Some(15.0),
+                is_under_dispute: false,
+                failed: false,
+            },
+        ];
+
+        for entry in entries {
+            engine.process(entry).unwrap();
+        }
+
+        let account = engine.accounts.get(&1).unwrap();
+
+        assert_eq!(account.available, 10.0);
+        assert_eq!(account.total, 10.0);
+        assert_eq!(account.held, 0.0);
+        assert!(!account.locked);
+
+        let transaction = engine.transactions.get(&2).unwrap();
+
+        assert!(transaction.failed);
+    }
+}
