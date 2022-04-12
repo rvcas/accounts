@@ -99,7 +99,7 @@ impl Engine {
                             account.chargeback(amount);
                         } else {
                             return Err(anyhow::anyhow!(
-                                "Dispute references transaction without amount"
+                                "Chargeback references transaction without amount"
                             ));
                         }
                     }
