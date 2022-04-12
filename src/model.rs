@@ -92,3 +92,87 @@ impl Account {
         self.locked = true;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Account;
+
+    #[test]
+    fn deposit() {
+        let amount = 10.0;
+        let mut account = Account::new(1);
+
+        account.deposit(amount);
+
+        assert_eq!(account.available, amount);
+        assert_eq!(account.total, amount);
+        assert_eq!(account.held, 0.0);
+        assert!(!account.locked);
+    }
+
+    #[test]
+    fn withdraw() {
+        let amount = 10.0;
+        let mut account = Account::new(1);
+
+        account.deposit(amount);
+
+        let amount = 5.0;
+
+        account.withdraw(amount);
+
+        assert_eq!(account.available, 5.0);
+        assert_eq!(account.total, 5.0);
+        assert_eq!(account.held, 0.0);
+        assert!(!account.locked);
+    }
+
+    #[test]
+    fn dispute() {
+        let amount = 10.0;
+        let mut account = Account::new(1);
+
+        account.deposit(amount);
+
+        account.dispute(amount);
+
+        assert_eq!(account.available, 0.0);
+        assert_eq!(account.held, amount);
+        assert_eq!(account.total, amount);
+        assert!(!account.locked);
+    }
+
+    #[test]
+    fn resolve() {
+        let amount = 10.0;
+        let mut account = Account::new(1);
+
+        account.deposit(amount);
+
+        account.dispute(amount);
+
+        account.resolve(amount);
+
+        assert_eq!(account.available, amount);
+        assert_eq!(account.total, amount);
+        assert_eq!(account.held, 0.0);
+        assert!(!account.locked);
+    }
+
+    #[test]
+    fn chargeback() {
+        let amount = 10.0;
+        let mut account = Account::new(1);
+
+        account.deposit(amount);
+
+        account.dispute(amount);
+
+        account.chargeback(amount);
+
+        assert_eq!(account.available, 0.0);
+        assert_eq!(account.held, 0.0);
+        assert_eq!(account.total, 0.0);
+        assert!(account.locked);
+    }
+}
