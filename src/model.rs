@@ -34,7 +34,8 @@ impl Transaction {
 
     // I implemented this because I wasn't sure if disputes
     // could also happen on withdrawals. If not then no harm done
-    // but if so then the amount needs to be negative.
+    // but if so then the amount needs to be negative. I think disputes on
+    // withdrawals might not make sense but I wanted to be safe.
     pub fn amount_with_sign(&self) -> Option<f64> {
         if self.is_withdrawal() {
             self.amount.map(f64::neg)
